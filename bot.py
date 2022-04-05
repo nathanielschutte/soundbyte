@@ -7,18 +7,18 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from config import BotConfig
-from exceptions import BotLoadError
+from exceptions import BotLoadError, ConfigLoadError
 from soundbyte import Soundbyte, SoundbyteHelp
 from constants import resolve_path
 from constants import PROJECT_ROOT, COL_GUILD, COL_SOUNDS, COL_GLOBAL, CONFIG_FILE
 from store import SimpleStorage, SimpleStorageException
 
-config = BotConfig(CONFIG_FILE)
-
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 try:
+    config = BotConfig(CONFIG_FILE)
+
     bot = commands.Bot(command_prefix=config.bot_prefix, help_command=None)
     bot.remove_command('help')
 
@@ -44,6 +44,10 @@ try:
     bot.add_cog(Soundbyte(bot, config=config, logger=logger, store=store))
 
     asyncio.get_event_loop().run_until_complete(bot.start(TOKEN))
+
+except ConfigLoadError as e:
+    print(f'Error: {str(e)}')
+    exit(1)
 
 except (SimpleStorageException, BotLoadError) as e:
     logger.error(str(e))

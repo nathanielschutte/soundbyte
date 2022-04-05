@@ -263,7 +263,7 @@ class Soundbyte(commands.Cog):
                 type = media.content_type.split('/')
                 if type[0] == 'audio':
                     if type[1] in AUDIO_FILE_TYPES:
-                        self.logger.debug(f'found sound in {msg.channel.name}' + type[1] + ', saving')
+                        self.logger.debug(f'found sound in {msg.channel.name} [format={type[1]}], saving')
 
                         # check on server dir
                         audio_dir = resolve_path(os.path.join(self.config.audio_root, self.config.audio_server_storage, f'{msg.guild.id}'), force_exists=False)
