@@ -1,0 +1,42 @@
+{
+    "sound": {
+        "function": "sound",
+        "argmin": 1,
+        "aliases": ["play"],
+        "desc": "play an existing sound",
+        "usage": "[sound name]",
+        "permission": "any"
+    },
+    "add": {
+        "argmin": 1,
+        "aliases": ["soundbit", "soundadd"],
+        "desc": "add a sound (latest mp3 in chat)",
+        "usage": "[name the new sound]"
+    },
+    "remove": {
+        "argmin": 1,
+        "aliases": ["delete"],
+        "desc": "remove a sound",
+        "usage": "[sound name]",
+        "permission": "admin",
+        "disabled": 1
+    },
+    "list": {
+        "argmin": 0,
+        "aliases": ["soundlist"],
+        "desc": "list all existing sounds for this server",
+        "usage": ""
+    },
+    "setprefix": {
+        "argmin": 1,
+        "desc": "set the bot prefix",
+        "usage": "[new prefix character]"
+    },
+    "help": {
+        "desc": "this message",
+        "usage": ""
+    },
+    "__none__": {
+        "disabled": 1
+    }
+}

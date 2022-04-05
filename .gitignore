@@ -1,0 +1,6 @@
+.env
+*.log
+__pycache__/
+storage/
+!storage/soundbit-global.dat
+soundbits/server
