@@ -1,9 +1,7 @@
 
 # soundbyte.py - The Soundbyte Cog
 
-from email.mime import audio
 import logging, os, json, asyncio
-from attr import has
 
 import discord
 from discord.ext import commands
@@ -305,7 +303,9 @@ class Soundbyte(commands.Cog):
         tracks = track_store['bits']
 
         if len(tracks) == 0:
-            await msg.channel.send('No soundbits stored!  Upload an mp3, then type `.add [name]` to add one.')
+            guild = str(msg.guild.id)
+            guilds = self.store.get_collection(COL_GUILD)
+            await msg.channel.send(f'No soundbits stored!  Upload an mp3, then type `{guilds[guild]["prefix"]}add [name]` to add one.')
         else:
             track_str = "\n".join([f"`{track}`" for track in tracks])
             await msg.channel.send(embed=discord.Embed(title='Tracks', description=track_str))
