@@ -45,10 +45,12 @@ class Soundbyte(commands.Cog):
 
         self.logger.info('Instantiating bot...')
         self.helper = SoundbyteHelp(commands_file=self.commands_file)
+        
 
 
     @commands.Cog.listener()
     async def on_ready(self):
+        await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=f'{self.config.bot_prefix}help'))
         self.logger.info('Bot is ready')
 
 
@@ -112,7 +114,7 @@ class Soundbyte(commands.Cog):
                                 await msg.channel.send(f'Usage: `{guilds[guild]["prefix"]}{command} {self.commands[command]["usage"]}`')
                             return
                         
-                        self.logger.debug(f'executing function for: \'{command}\'')
+                        #self.logger.debug(f'executing function for: \'{command}\'')
                         self.loop.create_task(method(msg, *args))
                     else:
                         self.logger.error(f'function not coroutine for command: {command}')
@@ -329,7 +331,9 @@ class Soundbyte(commands.Cog):
 
 
     async def help(self, msg: discord.Message, *args):
-        await self.helper.send_bot_help(msg.channel)
+        guild = str(msg.guild.id)
+        guilds = self.store.get_collection(COL_GUILD)
+        await self.helper.send_bot_help(msg.channel, guilds[guild]['prefix'])
 
         
 
@@ -353,7 +357,7 @@ class SoundbyteHelp(commands.HelpCommand):
             raise BotLoadError(f'Commands file not parseable: {commands_file} [{str(e)}]')
         
 
-    async def send_bot_help(self, channel):
+    async def send_bot_help(self, channel, prefix):
         embed = discord.Embed(title=f'{self.config.bot_title} help:')
         for cmd_name, cmd in self.commands.items():
 
@@ -368,7 +372,7 @@ class SoundbyteHelp(commands.HelpCommand):
             if 'usage' not in cmd:
                 cmd['usage'] = ''
 
-            cmdstr = f'{cmd["desc"]}\n`{self.config.bot_prefix}{cmd_name} {cmd["usage"]}`'
+            cmdstr = f'{cmd["desc"]}\n`{prefix}{cmd_name} {cmd["usage"]}`'
             embed.add_field(name=f'{cmd_name}:', value=cmdstr, inline=False)
             
         await channel.send(embed=embed)
