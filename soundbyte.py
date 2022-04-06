@@ -40,11 +40,11 @@ class Soundbyte(commands.Cog):
         self.config: BotConfig = config
         self.logger: logging.Logger = logger
         self.store: SimpleStorage = store
+        self.helper = SoundbyteHelp(self.config, self.commands)
 
         self.loop = asyncio.get_event_loop()
 
         self.logger.info('Instantiating bot...')
-        self.helper = SoundbyteHelp(commands_file=self.commands_file)
         
 
 
@@ -170,6 +170,7 @@ class Soundbyte(commands.Cog):
         # check for this audio file
         if not track_name in tracks:
             await msg.channel.send(f'I don\'t know the sound \'{track_name}\'')
+            return
 
         target = msg.author
         channel = None
@@ -340,21 +341,11 @@ class Soundbyte(commands.Cog):
 class SoundbyteHelp(commands.HelpCommand):
     '''Bot commands help'''
 
-    def __init__(self, commands_file=f'{__name__}.json'):
+    def __init__(self, config, commands):
         super().__init__()
 
-        self.commands = {}
-        self.config = BotConfig(CONFIG_FILE)
-
-        if not os.path.isfile(resolve_path(commands_file)):
-            raise BotLoadError(f'Commands file not found: {commands_file}')
-        self.commands_file = commands_file
-
-        try:
-            with open(commands_file, 'r') as file:
-                self.commands = json.loads(file.read())
-        except Exception as e:
-            raise BotLoadError(f'Commands file not parseable: {commands_file} [{str(e)}]')
+        self.config = config
+        self.commands = commands
         
 
     async def send_bot_help(self, channel, prefix):
