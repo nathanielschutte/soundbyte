@@ -4,20 +4,20 @@
         "argmin": 1,
         "aliases": ["play"],
         "desc": "play an existing sound",
-        "usage": "[sound name]",
+        "usage": "[name]",
         "permission": "any"
     },
     "add": {
         "argmin": 1,
         "aliases": ["soundbit", "soundadd"],
         "desc": "add a sound (latest mp3 in chat)",
-        "usage": "[name the new sound]"
+        "usage": "[name]"
     },
     "remove": {
         "argmin": 1,
         "aliases": ["delete"],
         "desc": "remove a sound",
-        "usage": "[sound name]",
+        "usage": "[name]",
         "permission": "admin",
         "disabled": 1
     },

@@ -169,7 +169,7 @@ class Soundbyte(commands.Cog):
         
         # check for this audio file
         if not track_name in tracks:
-            await msg.channel.send(f'I don\'t know the sound \'{track_name}\'')
+            await msg.channel.send(f'I don\'t know the sound `{track_name}`')
             return
 
         target = msg.author
@@ -250,6 +250,9 @@ class Soundbyte(commands.Cog):
         if len(args) < 1:
             await msg.channel.send('Please name the sound you want to hear')
             return
+        if len(args) > 1:
+            await msg.channel.send('Please use a single word to name the sound')
+            return
 
         track_name = args[0]
 
@@ -257,7 +260,11 @@ class Soundbyte(commands.Cog):
             await msg.channel.send('Please include a name for this soundbit!')
             return
 
+        guild = str(msg.guild.id)
+        guilds = self.store.get_collection(COL_GUILD)
+
         # Look for sound attachment
+        added = False
         async for message in msg.channel.history(limit=2):
             att = message.attachments
             for media in att:
@@ -293,11 +300,21 @@ class Soundbyte(commands.Cog):
                             track_store['bits'].append(track_name)
                             self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', track_store)
                             self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
-                        
+
+                            await msg.channel.send(f'Added new sound `{track_name}`')
+                            added = True
+
                         break
+
                     else:
-                        await msg.channel.send('Unsupported sound type \'' + type[1] + '\'')
-                        break
+                        await msg.channel.send('Unsupported file type \'' + type[1] + '\'')
+                        return
+                else:
+                    await msg.channel.send('Unsupported file type \'' + type[1] + '\'')
+                    return
+
+        if not added:
+            await msg.channel.send(f'Send an audio file in chat, then type `{guilds[guild]["prefix"]}add [name]`')
 
 
     async def list(self, msg: discord.Message, *args):
