@@ -30,7 +30,8 @@
     "setprefix": {
         "argmin": 1,
         "desc": "set the bot prefix",
-        "usage": "[new prefix character]"
+        "usage": "[new prefix character]",
+        "permission": "admin"
     },
     "help": {
         "desc": "this message",

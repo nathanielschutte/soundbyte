@@ -8,9 +8,9 @@ from dotenv import load_dotenv
 
 from config import BotConfig
 from exceptions import BotLoadError, ConfigLoadError
-from soundbyte import Soundbyte, SoundbyteHelp
+from soundbyte import Soundbyte
 from constants import resolve_path
-from constants import PROJECT_ROOT, COL_GUILD, COL_SOUNDS, COL_GLOBAL, CONFIG_FILE
+from constants import COL_GUILD, COL_SOUNDS, COL_GLOBAL, CONFIG_FILE
 from store import SimpleStorage, SimpleStorageException
 
 load_dotenv()
@@ -34,7 +34,6 @@ try:
         console_handle = logging.StreamHandler()
         console_handle.setFormatter(formatter)
         logger.addHandler(console_handle)
-
 
     store = SimpleStorage(config.storage_dir)
     store.load()

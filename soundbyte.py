@@ -9,7 +9,7 @@ from discord.ext import commands
 from exceptions import BotLoadError
 from config import BotConfig
 from constants import AUDIO_FILE_TYPES, resolve_path
-from constants import COL_GLOBAL, COL_GUILD, COL_SOUNDS, PROJECT_ROOT, CONFIG_FILE, AUDIO_FILE_EXT, OUTRO_TIMEOUT
+from constants import COL_GLOBAL, COL_GUILD, COL_SOUNDS, AUDIO_FILE_EXT, OUTRO_TIMEOUT, GOD_ID
 from store import SimpleStorage, SimpleStorageException
 
 class Soundbyte(commands.Cog):
@@ -65,13 +65,20 @@ class Soundbyte(commands.Cog):
         guild = str(msg.guild.id)
         guilds = self.store.get_collection(COL_GUILD)
 
+        guild_setup = False
+
         # make sure to load guild data
         if guild not in guilds:
             guilds[guild] = {}
-            self.store.set_collection(COL_GUILD, guilds)
-            self.store.persist_collection(COL_GUILD)
+            guild_setup = True
+        
+        # set up guild specific data
         if 'prefix' not in guilds[guild]:
             guilds[guild]['prefix'] = self.config.bot_prefix
+            guild_setup = True
+
+        # first time write
+        if guild_setup:
             self.store.set_collection(COL_GUILD, guilds)
             self.store.persist_collection(COL_GUILD)
 
@@ -96,6 +103,17 @@ class Soundbyte(commands.Cog):
                 # command disabled
                 if 'disabled' in self.commands[command] and self.commands[command]['disabled'] == 1:
                     return
+
+                # admin
+                if 'permission' in self.commands[command] \
+                    and len(self.commands[command]['permission']) > 0 \
+                    and self.commands[command]['permission'].lower() != 'any':
+                    perm_tag = self.commands[command]['permission'].lower()
+
+                    # need to set up admin permissions....right now just me
+                    if perm_tag == 'admin' and str(msg.author.id) != GOD_ID:
+                        await msg.channel.send(f'You are not authorized to run command `{command}`')
+                        return
 
                 self.logger.debug(f'user {msg.author.display_name} called on: \'{command}\'')
 
@@ -506,8 +524,9 @@ class SoundbyteHelp(commands.HelpCommand):
         for cmd_name, cmd in self.commands.items():
 
             # skip commands that have a permission besides 'any', or are disabled
-            if 'permission' in cmd and cmd['permission'] != 'any':
+            if 'permission' in cmd and cmd['permission'].lower() != 'any':
                 continue
+
             if 'disabled' in cmd and cmd['disabled'] == 1:
                 continue
 
