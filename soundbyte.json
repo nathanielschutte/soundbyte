@@ -36,6 +36,18 @@
         "desc": "this message",
         "usage": ""
     },
+    "setoutro": {
+        "aliases": ["set"],
+        "argmin": 1,
+        "desc": "set the outro sound for your user",
+        "usage": "[outro sound name]"
+    },
+    "outro": {
+        "aliases": ["out", "leave"],
+        "argmin": 0,
+        "desc": "play your outro sound",
+        "usage": ""
+    },
     "__none__": {
         "disabled": 1
     }

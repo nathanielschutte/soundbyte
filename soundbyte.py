@@ -9,7 +9,7 @@ from discord.ext import commands
 from exceptions import BotLoadError
 from config import BotConfig
 from constants import AUDIO_FILE_TYPES, resolve_path
-from constants import COL_GLOBAL, COL_GUILD, COL_SOUNDS, PROJECT_ROOT, CONFIG_FILE, AUDIO_FILE_EXT
+from constants import COL_GLOBAL, COL_GUILD, COL_SOUNDS, PROJECT_ROOT, CONFIG_FILE, AUDIO_FILE_EXT, OUTRO_TIMEOUT
 from store import SimpleStorage, SimpleStorageException
 
 class Soundbyte(commands.Cog):
@@ -138,43 +138,25 @@ class Soundbyte(commands.Cog):
 
         # if no bits, load the globals
         if 'bits' not in track_store:
-            if track_globals is not None and 'bits' in track_globals and isinstance(track_globals['bits'], list):
+            if track_globals is not None and 'bits' in track_globals and isinstance(track_globals['bits'], dict):
                 track_store['bits'] = track_globals['bits']
-                self.logger.info(f'no bits in new guild [{guild_id}], adding {len(track_globals["bits"])} global sounds')
+                self.logger.info(f'no bits in new guild [{guild_id}], adding {len(track_globals["bits"].keys())} global sounds')
             else:
-                track_store['bits'] = []
+                track_store['bits'] = {}
+
             self.store.set_collection(f'{COL_SOUNDS}-{guild_id}', track_store)
             self.store.persist_collection(f'{COL_SOUNDS}-{guild_id}')
 
         return track_store
 
 
-    # Command function template
-    # async def command(self, ctx: commands.Context, *args)
-
-    # Commands
-    async def sound(self, msg: discord.Message, *args):
-        if len(args) < 1:
-            await msg.channel.send('Please name the sound you want to hear')
-            return
-
-        track_name = args[0]
-        track_store = self._ensure_collection(msg.guild.id)
-
-        # ensure store is ok
-        tracks = track_store['bits']
-        if not isinstance(tracks, list):
-            self.logger.error(f'error reading track store for server [{msg.guild.name}]')
-            return
-        
-        # check for this audio file
-        if not track_name in tracks:
-            await msg.channel.send(f'I don\'t know the sound `{track_name}`')
-            return
-
+    # Play a sound in a channel, towards a target user, specified track
+    async def _play_sound(self, msg, track_name, timeout=None):
         target = msg.author
-        channel = None
-        
+
+        if timeout is None:
+            timeout = self.config.audio_timeout
+
         # author isnt in a channel, see if anyone else is
         if target.voice is None or target.voice.channel is None:
             audio_channels = msg.guild.voice_channels
@@ -193,57 +175,93 @@ class Soundbyte(commands.Cog):
             channel = target.voice.channel
 
         # there is a joinable channel
-        if channel is not None:
+        if channel is None:
+            return
 
-            # make sure bot isnt already connected 
-            for vc in self.bot.voice_clients:
-                if vc.channel.id == channel.id:
-                    self.logger.debug(f'bot already connected to the channel! {channel.id}')
-                    return
-
-            # read audio bit file
-            audio_dir = os.path.join(self.config.audio_root, self.config.audio_server_storage)
-            filename = os.path.join(audio_dir, f'{msg.guild.id}', track_name + '.' + AUDIO_FILE_EXT)
-            if not os.path.isfile(filename):
-
-                # check in the comman dir
-                audio_dir = os.path.join(self.config.audio_root, self.config.audio_common_storage)
-                filename = os.path.join(audio_dir, track_name + '.' + AUDIO_FILE_EXT)
-                
-                if not os.path.isfile(filename):
-                    self.logger.error(f'sound error: \'{filename} not found\'')
-                    return
-
-            # connect to voice channel
-            try:
-                vc = await channel.connect(timeout=2.0) # get voice client
-            except discord.ClientException:
+        # make sure bot isnt already connected 
+        for vc in self.bot.voice_clients:
+            if vc.channel.id == channel.id:
                 self.logger.debug(f'bot already connected to the channel! {channel.id}')
                 return
-            except asyncio.TimeoutError:
-                self.logger.error(f'connecting to channel {channel.id} timed out!')
+
+        # read audio bit file
+        audio_dir = os.path.join(self.config.audio_root, self.config.audio_server_storage)
+        filename = os.path.join(audio_dir, f'{msg.guild.id}', track_name + '.' + AUDIO_FILE_EXT)
+        if not os.path.isfile(filename):
+
+            # check in the comman dir
+            audio_dir = os.path.join(self.config.audio_root, self.config.audio_common_storage)
+            filename = os.path.join(audio_dir, track_name + '.' + AUDIO_FILE_EXT)
+            
+            if not os.path.isfile(filename):
+                self.logger.error(f'sound error: \'{filename} not found\'')
                 return
 
-            # play the audio file
-            vc.play(discord.FFmpegPCMAudio(executable=self.config.ffmpeg_exe, source=filename))
+        # connect to voice channel
+        try:
+            vc = await channel.connect(timeout=2.0) # get voice client
+        except discord.ClientException:
+            self.logger.debug(f'bot already connected to the channel! {channel.id}')
+            return
+        except asyncio.TimeoutError:
+            self.logger.error(f'connecting to channel {channel.id} timed out!')
+            return
 
-            # wait on it...asyncio timeout didnt seem to work
-            timeout = self.config.audio_timeout
-            while timeout > 0 and vc.is_playing() and vc.is_connected():
-                await asyncio.sleep(1.0)
-                timeout -= 1
+        # play the audio file
+        vc.play(discord.FFmpegPCMAudio(executable=self.config.ffmpeg_exe, source=filename))
 
-            if vc.is_playing():
-                vc.stop()
+        # wait on it...asyncio timeout didnt seem to work
+        while timeout > 0 and vc.is_playing() and vc.is_connected():
+            await asyncio.sleep(1.0)
+            timeout -= 1
 
-            if vc.is_connected():
-                await vc.disconnect()
+        if vc.is_playing():
+            vc.stop()
+
+        if vc.is_connected():
+            await vc.disconnect()
 
 
+    # Command function template
+    # async def command(self, msg: discord.Message, *args)
+
+    # Commands
+    async def sound(self, msg: discord.Message, *args):
+        if len(args) < 1:
+            await msg.channel.send('Please name the sound you want to hear')
+            return
+
+        track_name = args[0]
+        track_store = self._ensure_collection(msg.guild.id)
+
+        # ensure store is ok
+        tracks = track_store['bits']
+
+        # convert to new store
+        if isinstance(tracks, list):
+            new_store = {}
+            for track in tracks:
+                new_store[track] = {
+                    'name': track,
+                    'outro': {},
+                    'intro': {}
+                }
+
+            self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', new_store)
+            self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
+
+            tracks = new_store
+
+        if not isinstance(tracks, dict):
+            self.logger.error(f'error reading track store for server [{msg.guild.name}]')
+            return
         
-        # no audio channels with users
-        else:
-            pass
+        # check for this audio file
+        if not track_name in tracks:
+            await msg.channel.send(f'I don\'t know the sound `{track_name}`')
+            return
+        
+        await self._play_sound(msg, track_name)
 
 
     async def add(self, msg: discord.Message, *args):
@@ -290,14 +308,36 @@ class Soundbyte(commands.Cog):
 
                         # ensure store is ok
                         tracks = track_store['bits']
-                        if not isinstance(tracks, list):
+                        
+                        # convert to new store
+                        if isinstance(tracks, list):
+                            new_store = {}
+                            for track in tracks:
+                                new_store[track] = {
+                                    'name': track,
+                                    'outro': {},
+                                    'intro': {}
+                                }
+
+                            self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', new_store)
+                            self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
+
+                            tracks = new_store
+
+                        if not isinstance(tracks, dict):
                             self.logger.error(f'error reading track store for server ({msg.guild.name})')
                             return
 
                         # add file to store - if it already exists, it will now be overwritten
                         if track_name not in tracks:
                             self.logger.info(f'appending track to guild ({msg.guild.name}): {track_name}')
-                            track_store['bits'].append(track_name)
+                            
+                            track_store['bits'][track_name] = {
+                                'name': track_name,
+                                'outro': {},
+                                'intro': {}
+                            }
+
                             self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', track_store)
                             self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
 
@@ -318,19 +358,112 @@ class Soundbyte(commands.Cog):
 
 
     async def list(self, msg: discord.Message, *args):
-
         track_store = self._ensure_collection(msg.guild.id)
         tracks = track_store['bits']
+
+        author_id = msg.author.id
+        author_display_name = msg.author.display_name
+
+        # convert to new store
+        if isinstance(tracks, list):
+            new_store = {}
+
+            for track in tracks:
+                new_store[track] = {
+                    'name': track,
+                    'outro': {},
+                    'intro': {}
+                }
+            
+            self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', new_store)
+            self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
+
+            tracks = new_store
+
+        if not isinstance(tracks, dict):
+            self.logger.error(f'error reading track store for server [{msg.guild.name}]')
+            return
 
         if len(tracks) == 0:
             guild = str(msg.guild.id)
             guilds = self.store.get_collection(COL_GUILD)
+            
             await msg.channel.send(f'No soundbits stored!  Upload an mp3, then type `{guilds[guild]["prefix"]}add [name]` to add one.')
         else:
-            track_str = "\n".join([f"`{track}`" for track in tracks])
+            track_list = []
+
+            for track_name, track_data in tracks.items():
+                track_str = f'{track_name}'
+
+                # outro: { 'nates_id': { display_name: 'drunk_irishman', id: 'nates_id' } }
+                if 'outro' in track_data and isinstance(track_data['outro'], dict):
+                    track_str += f' (outro for: `{", ".join([user["display_name"] for user in track_data["outro"].values()])}`)'
+
+                track_list.append(track_str)
+
+            track_str = "\n".join(track_list)
+
             await msg.channel.send(embed=discord.Embed(title='Tracks', description=track_str))
 
+
+    async def setoutro(self, msg: discord.Message, *args):
+        outro_name = args[0]
+        
+        author_id = msg.author.id
+        author_display_name = msg.author.display_name
+
+        track_store = self._ensure_collection(msg.guild.id)
+        tracks = track_store['bits']
+
+        if not isinstance(tracks, dict):
+            self.logger.error(f'error reading track store for server [{msg.guild.name}]')
+            return
+
+        if outro_name not in tracks:
+            await msg.channel.send(f'Sound does not exist: {outro_name}')
+
+        for bit_name, bit_data in tracks.items():
+            if author_id in bit_data:
+                del track_store['bits'][bit_name][author_id]
+
+        if str(author_id) not in track_store['bits'][outro_name]['outro']:
+            track_store['bits'][outro_name]['outro'][str(author_id)] = {
+                'display_name': author_display_name,
+                'id': author_id
+            }
+
+        self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', track_store)
+        self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
+
+        await msg.channel.send(f'Set user `{author_display_name}` outro to `{outro_name}`')
+        
+
+    # Play user outro
+    async def outro(self, msg: discord.Message, *args):
+        guild = str(msg.guild.id)
+        guilds = self.store.get_collection(COL_GUILD)
+        
+        author_id = msg.author.id
+        author_display_name = msg.author.display_name
+
+        track_store = self._ensure_collection(msg.guild.id)
+        tracks = track_store['bits']
+
+        for bit_name in tracks.keys():
+            if str(author_id) in tracks[bit_name]['outro']:
+                
+                # play outro music
+                await self._play_sound(msg, bit_name, timeout=OUTRO_TIMEOUT)
+
+                # disconnect user
+                await msg.author.move_to(None)
+
+                return
+
+        await msg.channel.send(f'No outro set for you, {author_display_name}. Use `{guilds[guild]["prefix"]}setoutro [sound anme]` to set your outro sound.')
     
+
+    # Set server prefix
     async def setprefix(self, msg: discord.Message, *args):
 
         if len(args) < 1 or len(args[0]) > 1:
@@ -351,6 +484,7 @@ class Soundbyte(commands.Cog):
     async def help(self, msg: discord.Message, *args):
         guild = str(msg.guild.id)
         guilds = self.store.get_collection(COL_GUILD)
+        
         await self.helper.send_bot_help(msg.channel, guilds[guild]['prefix'])
 
         

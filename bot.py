@@ -60,3 +60,4 @@ except KeyboardInterrupt:
 except Exception as e:
     logger.error(f'[uncaught error] {str(e)}')
     exit(1)
+    

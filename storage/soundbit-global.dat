@@ -1,1 +1,9 @@
-{"bits": ["laugh"]}
+{
+    "bits": {
+        "laugh": {
+            "name": "laugh",
+            "outro": {},
+            "intro": {}
+        }
+    }
+}

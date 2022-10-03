@@ -20,6 +20,9 @@ AUDIO_FILE_TYPES = ['mpeg']
 
 AUDIO_FILE_EXT = 'mp3'
 
+# outro time
+OUTRO_TIMEOUT = 5
+
 def resolve_path(path, force_exists=True):
     '''If filename is not found, check if it exists relative to project root'''
 

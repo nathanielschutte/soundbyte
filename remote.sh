@@ -13,6 +13,10 @@ KEY_LOC="C:/Users/Nate/.ssh/aws-access.pem"
 # Remote entry script
 REMOTE_ENTRY="bot.py"
 
+# Remote pm2
+REMOTE_PM2="pm2"
+REMOTE_PROC_NAME="soundbyte"
+
 # Internal files
 TRACKER_FILE='.deploy'
 
@@ -20,7 +24,7 @@ TRACKER_FILE='.deploy'
 IGNORE_DOT_DIRS='true'
 IGNORE_DOT_FILES='true'
 IGNORE_DIRS='__pycache__ storage config.ini soundbits/server'
-IGNORE_FILES="remote.sh $TRACKER_FILE"
+IGNORE_FILES="remote.sh $TRACKER_FILE out.log"
 
 # Output
 V_SPEC='false'
@@ -30,13 +34,15 @@ V_SPEC='false'
 
 # Get deploy options
 DEPLOY=1
-ACTION=0
-while getopts 'drsv' flag; do
+ACTION=2
+while getopts 'drsvi:' flag; do
     case "${flag}" in
         d) DEPLOY=1 ;;
+        n) ACTION=0 ;; # no restart
         r) ACTION=1 ;; # run
         s) ACTION=2 ;; # stop
-        v) V_SPEC='true'
+        v) V_SPEC='true' ;;
+        i) KEY_LOC="${OPTARG}" ;;   # override key location
     esac
 done
 
@@ -63,6 +69,17 @@ stop() {
     #ssh $REMOTE_USER@$REMOTE_HOST -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "sudo su - -c 'kill $(ps -a | grep python3 | cut -d \' \' -f1)'"
     return
 }
+
+
+# Remote stop/start with pm2
+pm2() {
+    if [[ $ACTION == 1 ]]; then
+        ssh $REMOTE_USER@$REMOTE_HOST -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "sudo su - -c '$REMOTE_PM2 start $REMOTE_MAP/$REMOTE_ENTRY --name $REMOTE_PROC_NAME'"
+    elif [[ $ACTION == 2 ]]; then
+        ssh $REMOTE_USER@$REMOTE_HOST -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "sudo su - -c '$REMOTE_PM2 stop $REMOTE_PROC_NAME'"
+    fi
+}
+
 
 # SCP deploy
 deploy() {
@@ -160,13 +177,15 @@ deploy() {
 
 if [[ $ACTION -eq 2 ]]; then
     printf "Stopping remote process...\n"
-    stop
+    # stop
+    pm2
     printf "Finished.\n"
 fi
 
 if [[ $DEPLOY -eq 1 ]]; then
     printf "Deploying...\n"
     deploy
+    [ "$ACTION" == 2 ] && ACTION=1
     printf "Finished deploy.\n"
     if [[ $ACTION -eq 1 ]]; then
         printf "\n"
@@ -175,6 +194,7 @@ fi
 
 if [[ $ACTION -eq 1 ]]; then
     printf "Starting remote process...\n"
-    run
+    # run
+    pm2
     printf "Finished."
 fi
