@@ -45,7 +45,7 @@
     "outro": {
         "aliases": ["out", "leave"],
         "argmin": 0,
-        "desc": "play your outro sound",
+        "desc": "play your outro sound then disconnect",
         "usage": ""
     },
     "__none__": {

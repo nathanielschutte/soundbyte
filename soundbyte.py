@@ -240,17 +240,18 @@ class Soundbyte(commands.Cog):
         # convert to new store
         if isinstance(tracks, list):
             new_store = {}
+
             for track in tracks:
                 new_store[track] = {
                     'name': track,
                     'outro': {},
                     'intro': {}
                 }
+                
+            track_store['bits'] = new_store
 
             self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', new_store)
             self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
-
-            tracks = new_store
 
         if not isinstance(tracks, dict):
             self.logger.error(f'error reading track store for server [{msg.guild.name}]')
@@ -312,6 +313,7 @@ class Soundbyte(commands.Cog):
                         # convert to new store
                         if isinstance(tracks, list):
                             new_store = {}
+
                             for track in tracks:
                                 new_store[track] = {
                                     'name': track,
@@ -319,10 +321,10 @@ class Soundbyte(commands.Cog):
                                     'intro': {}
                                 }
 
+                            track_store['bits'] = new_store
+
                             self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', new_store)
                             self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
-
-                            tracks = new_store
 
                         if not isinstance(tracks, dict):
                             self.logger.error(f'error reading track store for server ({msg.guild.name})')
@@ -374,11 +376,11 @@ class Soundbyte(commands.Cog):
                     'outro': {},
                     'intro': {}
                 }
-            
-            self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', new_store)
-            self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
 
-            tracks = new_store
+            track_store['bits'] = new_store
+            
+            self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', track_store)
+            self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
 
         if not isinstance(tracks, dict):
             self.logger.error(f'error reading track store for server [{msg.guild.name}]')
@@ -396,7 +398,7 @@ class Soundbyte(commands.Cog):
                 track_str = f'{track_name}'
 
                 # outro: { 'nates_id': { display_name: 'drunk_irishman', id: 'nates_id' } }
-                if 'outro' in track_data and isinstance(track_data['outro'], dict):
+                if 'outro' in track_data and isinstance(track_data['outro'], dict) and len(track_data['outro'].keys()) > 0:
                     track_str += f' (outro for: `{", ".join([user["display_name"] for user in track_data["outro"].values()])}`)'
 
                 track_list.append(track_str)
@@ -409,7 +411,7 @@ class Soundbyte(commands.Cog):
     async def setoutro(self, msg: discord.Message, *args):
         outro_name = args[0]
         
-        author_id = msg.author.id
+        author_id = str(msg.author.id)
         author_display_name = msg.author.display_name
 
         track_store = self._ensure_collection(msg.guild.id)
@@ -421,10 +423,11 @@ class Soundbyte(commands.Cog):
 
         if outro_name not in tracks:
             await msg.channel.send(f'Sound does not exist: {outro_name}')
+            return
 
         for bit_name, bit_data in tracks.items():
-            if author_id in bit_data:
-                del track_store['bits'][bit_name][author_id]
+            if str(author_id) in bit_data['outro']:
+                del track_store['bits'][bit_name]['outro'][str(author_id)]
 
         if str(author_id) not in track_store['bits'][outro_name]['outro']:
             track_store['bits'][outro_name]['outro'][str(author_id)] = {
@@ -443,7 +446,7 @@ class Soundbyte(commands.Cog):
         guild = str(msg.guild.id)
         guilds = self.store.get_collection(COL_GUILD)
         
-        author_id = msg.author.id
+        author_id = str(msg.author.id)
         author_display_name = msg.author.display_name
 
         track_store = self._ensure_collection(msg.guild.id)
@@ -457,10 +460,9 @@ class Soundbyte(commands.Cog):
 
                 # disconnect user
                 await msg.author.move_to(None)
-
                 return
 
-        await msg.channel.send(f'No outro set for you, {author_display_name}. Use `{guilds[guild]["prefix"]}setoutro [sound anme]` to set your outro sound.')
+        await msg.channel.send(f'No outro set for you, {author_display_name}. Use `{guilds[guild]["prefix"]}setoutro [sound name]` to set your outro sound.')
     
 
     # Set server prefix

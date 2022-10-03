@@ -24,7 +24,7 @@ TRACKER_FILE='.deploy'
 IGNORE_DOT_DIRS='true'
 IGNORE_DOT_FILES='true'
 IGNORE_DIRS='__pycache__ storage config.ini soundbits/server'
-IGNORE_FILES="remote.sh $TRACKER_FILE out.log"
+IGNORE_FILES="remote.sh $TRACKER_FILE out.log config.ini"
 
 # Output
 V_SPEC='false'
@@ -179,7 +179,7 @@ if [[ $ACTION -eq 2 ]]; then
     printf "Stopping remote process...\n"
     # stop
     pm2
-    printf "Finished.\n"
+    printf 'Stopped %s.\n' "$REMOTE_PROC_NAME"
 fi
 
 if [[ $DEPLOY -eq 1 ]]; then
@@ -196,5 +196,7 @@ if [[ $ACTION -eq 1 ]]; then
     printf "Starting remote process...\n"
     # run
     pm2
-    printf "Finished."
+    printf 'Started %s.\n' "$REMOTE_PROC_NAME"
 fi
+
+echo 'Done.'

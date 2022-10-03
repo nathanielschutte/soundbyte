@@ -18,10 +18,11 @@ COL_GLOBAL = 'global'
 # only consider these file types
 AUDIO_FILE_TYPES = ['mpeg']
 
+# save files to this extension
 AUDIO_FILE_EXT = 'mp3'
 
 # outro time
-OUTRO_TIMEOUT = 5
+OUTRO_TIMEOUT = 6
 
 def resolve_path(path, force_exists=True):
     '''If filename is not found, check if it exists relative to project root'''
