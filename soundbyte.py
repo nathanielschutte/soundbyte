@@ -513,6 +513,7 @@ class Soundbyte(commands.Cog):
         self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', track_store)
         self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
 
+        self.logger.info(f'set user \'{author_display_name}\' [{author_id}] to \'{outro_name}\'')
         await msg.channel.send(f'Set user `{author_display_name}` outro to `{outro_name}`')
         
 
