@@ -474,7 +474,7 @@ class Soundbyte(commands.Cog):
             if str(author_id) in tracks[bit_name]['outro']:
                 
                 # play outro music
-                await self._play_sound(msg, bit_name, timeout=OUTRO_TIMEOUT)
+                await self._play_sound(msg, bit_name, timeout=self.config.outro_timeout)
 
                 # disconnect user
                 await msg.author.move_to(None)

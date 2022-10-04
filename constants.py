@@ -21,9 +21,6 @@ AUDIO_FILE_TYPES = ['mpeg']
 # save files to this extension
 AUDIO_FILE_EXT = 'mp3'
 
-# outro time
-OUTRO_TIMEOUT = 6
-
 # admin
 GOD_ID = '239605736030601216'
 
