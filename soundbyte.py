@@ -9,7 +9,7 @@ from discord.ext import commands
 from exceptions import BotLoadError
 from config import BotConfig
 from constants import AUDIO_FILE_TYPES, resolve_path
-from constants import COL_GLOBAL, COL_GUILD, COL_SOUNDS, AUDIO_FILE_EXT, OUTRO_TIMEOUT, GOD_ID
+from constants import COL_GLOBAL, COL_GUILD, COL_SOUNDS, AUDIO_FILE_EXT, GOD_ID
 from store import SimpleStorage, SimpleStorageException
 
 class Soundbyte(commands.Cog):
