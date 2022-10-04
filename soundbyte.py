@@ -484,7 +484,7 @@ class Soundbyte(commands.Cog):
 
 
     async def setoutro(self, msg: discord.Message, *args):
-        outro_name = args[0]
+        outro_name = '_'.join(map(lambda arg: arg.strip(), args))
         
         author_id = str(msg.author.id)
         author_display_name = msg.author.display_name
@@ -497,7 +497,7 @@ class Soundbyte(commands.Cog):
             return
 
         if outro_name not in tracks:
-            await msg.channel.send(f'Sound does not exist: {outro_name}')
+            await msg.channel.send(f'I don\'t know the sound `{outro_name}`')
             return
 
         for bit_name, bit_data in tracks.items():
