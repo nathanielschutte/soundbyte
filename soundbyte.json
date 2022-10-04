@@ -19,7 +19,7 @@
         "desc": "remove a sound",
         "usage": "[name]",
         "permission": "admin",
-        "disabled": 1
+        "disabled": 0
     },
     "list": {
         "argmin": 0,

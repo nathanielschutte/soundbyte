@@ -168,7 +168,7 @@ class Soundbyte(commands.Cog):
         return track_store
 
 
-    # Play a sound in a channel, towards a target user, specified track
+    # Play a sound in a channel (target based on calling user), set track name and timeout
     async def _play_sound(self, msg, track_name, timeout=None):
         target = msg.author
 
@@ -240,16 +240,17 @@ class Soundbyte(commands.Cog):
             await vc.disconnect()
 
 
+    # Commands
     # Command function template
     # async def command(self, msg: discord.Message, *args)
 
-    # Commands
+    # Play an existing sound
     async def sound(self, msg: discord.Message, *args):
         if len(args) < 1:
             await msg.channel.send('Please name the sound you want to hear')
             return
 
-        track_name = args[0]
+        track_name = '_'.join(map(lambda arg: arg.strip(), args))
         track_store = self._ensure_collection(msg.guild.id)
 
         # ensure store is ok
@@ -283,15 +284,67 @@ class Soundbyte(commands.Cog):
         await self._play_sound(msg, track_name)
 
 
+    # Remove a sound
+    async def remove(self, msg: discord.Message, *args):
+        if len(args) < 1:
+            await msg.channel.send('Please name the sound you want to remove')
+            return
+
+        track_name = '_'.join(map(lambda arg: arg.strip(), args))
+        track_store = self._ensure_collection(msg.guild.id)
+
+        # Ensure store is ok
+        tracks = track_store['bits']
+
+        if not isinstance(tracks, dict):
+            self.logger.error(f'error reading track store for server [{msg.guild.name}]')
+            return
+        
+        # Check for this audio file
+        if not track_name in tracks:
+            await msg.channel.send(f'I don\'t know the sound `{track_name}`')
+            return
+        
+        # Read audio bit file
+        audio_dir = os.path.join(self.config.audio_root, self.config.audio_server_storage)
+        filename = os.path.join(audio_dir, f'{msg.guild.id}', track_name + '.' + AUDIO_FILE_EXT)
+
+        # File does not exist in the server list
+        if not os.path.isfile(filename):
+            global_audio_dir = os.path.join(self.config.audio_root, self.config.audio_common_storage)
+            global_filename = os.path.join(global_audio_dir, track_name + '.' + AUDIO_FILE_EXT)
+            
+            if not os.path.isfile(global_filename):
+                self.logger.error(f'sound error: file \'{filename}\' not found.  removing track from list: {track_name}')
+                del track_store['bits'][track_name]
+
+                await msg.channel.send(f'Sound file not found, removed the listing for `{track_name}`')
+            else:
+                await msg.channel.send(f'Sound is global, cannot delete `{track_name}`')
+
+            return
+                
+        # File exists
+        try:
+
+            # Try to delete the file, and only remove the listing if successful
+            os.remove(filename)
+            del track_store['bits'][track_name]
+
+            await msg.channel.send(f'Removed `{track_name}`')
+        except Exception as e:
+            self.logger.error(f'Unable to remove file \'{filename}\': {str(e)}')
+            
+            await msg.channel.send(f'Unable to remove file for track `{track_name}`')
+
+
+    # Add a new sound
     async def add(self, msg: discord.Message, *args):
         if len(args) < 1:
             await msg.channel.send('Please name the sound you want to hear')
             return
-        if len(args) > 1:
-            await msg.channel.send('Please use a single word to name the sound')
-            return
 
-        track_name = args[0]
+        track_name = '_'.join(map(lambda arg: arg.strip(), args))
 
         if track_name is None or len(track_name.strip()) == 0:
             await msg.channel.send('Please include a name for this soundbit!')
@@ -348,7 +401,7 @@ class Soundbyte(commands.Cog):
                             self.logger.error(f'error reading track store for server ({msg.guild.name})')
                             return
 
-                        # add file to store - if it already exists, it will now be overwritten
+                        # add file to store if it does not already exist
                         if track_name not in tracks:
                             self.logger.info(f'appending track to guild ({msg.guild.name}): {track_name}')
                             
@@ -363,6 +416,10 @@ class Soundbyte(commands.Cog):
 
                             await msg.channel.send(f'Added new sound `{track_name}`')
                             added = True
+
+                        else:
+                            await msg.channel.send(f'Cannot overwrite existing sound `{track_name}`')
+                            return
 
                         break
 

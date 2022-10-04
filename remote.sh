@@ -178,7 +178,7 @@ deploy() {
 if [[ $ACTION -eq 2 ]]; then
     printf "Stopping remote process...\n"
     # stop
-    pm2
+    # pm2
     printf 'Stopped %s.\n' "$REMOTE_PROC_NAME"
 fi
 
@@ -195,7 +195,7 @@ fi
 if [[ $ACTION -eq 1 ]]; then
     printf "Starting remote process...\n"
     # run
-    pm2
+    # pm2
     printf 'Started %s.\n' "$REMOTE_PROC_NAME"
 fi
 
