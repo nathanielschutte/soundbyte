@@ -10,7 +10,7 @@ from discord.ext import commands
 from exceptions import BotLoadError
 from config import BotConfig
 from constants import AUDIO_FILE_TYPES, resolve_path
-from constants import COL_GLOBAL, COL_GUILD, COL_SOUNDS, AUDIO_FILE_EXT, GOD_ID
+from constants import COL_GLOBAL, COL_GUILD, COL_SOUNDS, AUDIO_FILE_EXT, GOD_IDS
 from store import SimpleStorage, SimpleStorageException
 
 class Soundbyte(commands.Cog):
@@ -112,7 +112,7 @@ class Soundbyte(commands.Cog):
                     perm_tag = self.commands[command]['permission'].lower()
 
                     # need to set up admin permissions....right now just me
-                    if perm_tag == 'admin' and str(msg.author.id) != GOD_ID:
+                    if perm_tag == 'admin' and str(msg.author.id) not in GOD_IDS:
                         await msg.channel.send(f'You are not authorized to run command `{command}`')
                         return
 
@@ -176,7 +176,7 @@ class Soundbyte(commands.Cog):
         if timeout is None:
             timeout = self.config.audio_timeout
 
-        # author isnt in a channel, see if anyone else is
+        # Author isnt in a channel, see if anyone else is
         if target.voice is None or target.voice.channel is None:
             audio_channels = msg.guild.voice_channels
             #print(f'audio channels: {audio_channels}')
@@ -189,21 +189,21 @@ class Soundbyte(commands.Cog):
                 if channel is not None:
                     break
 
-        # pick author's channel alternatively (priority)
+        # Pick author's channel alternatively (priority)
         else:
             channel = target.voice.channel
 
-        # there is a joinable channel
+        # There is a joinable channel
         if channel is None:
             return
 
-        # make sure bot isnt already connected 
+        # Make sure bot isnt already connected 
         for vc in self.bot.voice_clients:
             if vc.channel.id == channel.id:
                 self.logger.debug(f'bot already connected to the channel! {channel.id}')
                 return
 
-        # read audio bit file
+        # Read audio bit file
         audio_dir = os.path.join(self.config.audio_root, self.config.audio_server_storage)
         filename = os.path.join(audio_dir, f'{msg.guild.id}', track_name + '.' + AUDIO_FILE_EXT)
         if not os.path.isfile(filename):
@@ -216,7 +216,7 @@ class Soundbyte(commands.Cog):
                 self.logger.error(f'sound error: \'{filename} not found\'')
                 return
 
-        # connect to voice channel
+        # Connect to voice channel
         try:
             vc = await channel.connect(timeout=2.0) # get voice client
         except discord.ClientException:
@@ -226,10 +226,11 @@ class Soundbyte(commands.Cog):
             self.logger.error(f'connecting to channel {channel.id} timed out!')
             return
 
-        # play the audio file
+        # Play the audio file
         vc.play(discord.FFmpegPCMAudio(executable=self.config.ffmpeg_exe, source=filename))
 
-        # wait on it...asyncio timeout didnt seem to work
+        # Wait on it...asyncio timeout didnt seem to work
+        count_up = 0
         event_tasks = []
         while timeout > 0 and vc.is_playing() and vc.is_connected():
             if events is not None:
@@ -238,7 +239,7 @@ class Soundbyte(commands.Cog):
                 do_events = []
                 rm_events = []
                 for idx, event in enumerate(events):
-                    if timeout <= event['at']:
+                    if count_up >= event['at']:
 
                         # TODO check that handler is an awaitable coroutine
                         if 'handler' not in event:
@@ -246,12 +247,12 @@ class Soundbyte(commands.Cog):
                             rm_events.append(idx)
                             continue
 
-                        self.logger.debug(f'Starting event in queue @{event["at"]} seconds, handler {event["handler"]}')
+                        self.logger.debug(f'Starting event in queue @{event["at"]} seconds, handler: {event["name"]}')
                         do_events.append(idx)
                 
                 # start the tasks and remove from queue
                 for do_event in do_events:
-                    event_tasks.append(asyncio.create_task(events[do_event]['handler']))
+                    event_tasks.append(asyncio.create_task(events[do_event]['handler'](*events[do_event]['args'])))
                     del events[do_event]
 
                 # remove bad events so they're not retried
@@ -261,6 +262,7 @@ class Soundbyte(commands.Cog):
             # check every second
             await asyncio.sleep(1.0)
             timeout -= 1
+            count_up += 1
 
         if vc.is_playing():
             vc.stop()
@@ -268,6 +270,20 @@ class Soundbyte(commands.Cog):
         if vc.is_connected():
             await vc.disconnect()
 
+        # Queue remaining events post sound loop
+        if events is not None and len(events) > 0:
+            self.logger.debug(f'Queuing remaining {len(events)} events after sound loop')
+            for event in events:
+                # TODO check that handler is an awaitable coroutine
+                if 'handler' not in event:
+                    self.logger.debug(f'Skipping non-couroutine event: {event["handler"] if "handler" in event else "unknown"}')
+                    rm_events.append(idx)
+                    continue
+                
+                self.logger.debug(f'Starting event handler post-loop: {event["name"]}')
+                event_tasks.append(asyncio.create_task(event['handler'](*event['args'])))
+
+        # Gather tasks
         if len(event_tasks) > 0:
             self.logger.debug(f'Awaiting queue of {len(event_tasks)} events')
             await asyncio.gather(*event_tasks)
@@ -278,8 +294,7 @@ class Soundbyte(commands.Cog):
     
     # Disconnect user
     async def _dc_user(self, user):
-        await asyncio.sleep(1)
-        #await user.move_to(None)
+        await user.move_to(None)
 
 
     # Commands
@@ -576,8 +591,10 @@ class Soundbyte(commands.Cog):
                 # play outro music, disconnect user as an event during the timer
                 await self._play_sound(msg, bit_name, timeout=self.config.outro_timeout, events=[
                     {
+                        'name': 'disconnect user',
                         'at': self.config.outro_user_dc_seconds,
-                        'handler': self._dc_user(msg.author)
+                        'handler': self._dc_user,
+                        'args': [msg.author]
                     }
                 ])
 
