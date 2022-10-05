@@ -1,6 +1,7 @@
 
 # soundbyte.py - The Soundbyte Cog
 
+import inspect
 import logging, os, json, asyncio
 
 import discord
@@ -169,7 +170,7 @@ class Soundbyte(commands.Cog):
 
 
     # Play a sound in a channel (target based on calling user), set track name and timeout
-    async def _play_sound(self, msg, track_name, timeout=None):
+    async def _play_sound(self, msg, track_name, timeout=None, events=None):
         target = msg.author
 
         if timeout is None:
@@ -229,7 +230,35 @@ class Soundbyte(commands.Cog):
         vc.play(discord.FFmpegPCMAudio(executable=self.config.ffmpeg_exe, source=filename))
 
         # wait on it...asyncio timeout didnt seem to work
+        event_tasks = []
         while timeout > 0 and vc.is_playing() and vc.is_connected():
+            if events is not None:
+
+                # check queue for events that should be started
+                do_events = []
+                rm_events = []
+                for idx, event in enumerate(events):
+                    if timeout <= event['at']:
+
+                        # TODO check that handler is an awaitable coroutine
+                        if 'handler' not in event:
+                            self.logger.debug(f'Skipping non-couroutine event: {event["handler"] if "handler" in event else "unknown"}')
+                            rm_events.append(idx)
+                            continue
+
+                        self.logger.debug(f'Starting event in queue @{event["at"]} seconds, handler {event["handler"]}')
+                        do_events.append(idx)
+                
+                # start the tasks and remove from queue
+                for do_event in do_events:
+                    event_tasks.append(asyncio.create_task(events[do_event]['handler']))
+                    del events[do_event]
+
+                # remove bad events so they're not retried
+                for rm_event in rm_events:
+                    del events[rm_event]
+
+            # check every second
             await asyncio.sleep(1.0)
             timeout -= 1
 
@@ -238,6 +267,18 @@ class Soundbyte(commands.Cog):
 
         if vc.is_connected():
             await vc.disconnect()
+
+        if len(event_tasks) > 0:
+            self.logger.debug(f'Awaiting queue of {len(event_tasks)} events')
+            await asyncio.gather(*event_tasks)
+
+        self.logger.debug(f'Tasks gathered')
+
+    
+    # Disconnect user
+    async def _dc_user(self, user):
+        await asyncio.sleep(1)
+        #await user.move_to(None)
 
 
     # Commands
@@ -531,11 +572,14 @@ class Soundbyte(commands.Cog):
         for bit_name in tracks.keys():
             if str(author_id) in tracks[bit_name]['outro']:
                 
-                # play outro music
-                await self._play_sound(msg, bit_name, timeout=self.config.outro_timeout)
+                # play outro music, disconnect user as an event during the timer
+                await self._play_sound(msg, bit_name, timeout=self.config.outro_timeout, events=[
+                    {
+                        'at': self.config.outro_user_dc_seconds,
+                        'handler': self._dc_user(msg.author)
+                    }
+                ])
 
-                # disconnect user
-                await msg.author.move_to(None)
                 return
 
         await msg.channel.send(f'No outro set for you, {author_display_name}. Use `{guilds[guild]["prefix"]}setoutro [sound name]` to set your outro sound.')
