@@ -54,8 +54,10 @@ class BotConfig(metaclass=Singleton):
             self.audio_common_storage = config.get('audio', 'common_storage')
             self.ffmpeg_exe = config.get('audio', 'ffmpeg', fallback='thisisnotset')
             self.audio_timeout = config.getint('audio', 'timeout_seconds', fallback=8)
-            self.outro_timeout = config.getint('audio', 'outro_timeout_seconds', fallback=8)
-            self.outro_user_dc_seconds = config.getint('audio', 'outro_user_dc_seconds', fallback=4)
+            
+            self.outro_timeout = config.getint('outro', 'outro_timeout_seconds', fallback=8)
+            self.outro_user_dc_seconds = config.getint('outro', 'outro_user_dc_seconds', fallback=4)
+            self.outro_msg_seconds = config.getint('outro', 'outro_msg_seconds', fallback=2)
 
             # logging
             temp_level = config.get('logging', 'level', fallback='info').lower()

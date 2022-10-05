@@ -297,6 +297,11 @@ class Soundbyte(commands.Cog):
         await user.move_to(None)
 
 
+    # Message the channel
+    async def _msg_user(self, channel, user, track):
+        await channel.send(f'Bye {user}, `{track}` is a great pick.')
+
+
     # Commands
     # Command function template
     # async def command(self, msg: discord.Message, *args)
@@ -595,6 +600,12 @@ class Soundbyte(commands.Cog):
                         'at': self.config.outro_user_dc_seconds,
                         'handler': self._dc_user,
                         'args': [msg.author]
+                    },
+                    {
+                        'name': 'bot message',
+                        'at': self.config.outro_msg_seconds,
+                        'handler': self._msg_user,
+                        'args': [msg.channel, msg.author.display_name, bit_name]
                     }
                 ])
 
