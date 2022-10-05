@@ -271,8 +271,9 @@ class Soundbyte(commands.Cog):
         if len(event_tasks) > 0:
             self.logger.debug(f'Awaiting queue of {len(event_tasks)} events')
             await asyncio.gather(*event_tasks)
+            self.logger.debug(f'Tasks gathered')
 
-        self.logger.debug(f'Tasks gathered')
+        self.logger.info(f'Finished playing sound \'{track_name}\'')
 
     
     # Disconnect user
