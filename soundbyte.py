@@ -377,8 +377,10 @@ class Soundbyte(commands.Cog):
             global_filename = os.path.join(global_audio_dir, track_name + '.' + AUDIO_FILE_EXT)
             
             if not os.path.isfile(global_filename):
-                self.logger.error(f'sound error: file \'{filename}\' not found.  removing track from list: {track_name}')
+                self.logger.warning(f'sound error: file \'{filename}\' not found.  removed track from list: {track_name}')
                 del track_store['bits'][track_name]
+                self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', track_store)
+                self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
 
                 await msg.channel.send(f'Sound file not found, removed the listing for `{track_name}`')
             else:
@@ -392,6 +394,8 @@ class Soundbyte(commands.Cog):
             # Try to delete the file, and only remove the listing if successful
             os.remove(filename)
             del track_store['bits'][track_name]
+            self.store.set_collection(f'{COL_SOUNDS}-{msg.guild.id}', track_store)
+            self.store.persist_collection(f'{COL_SOUNDS}-{msg.guild.id}')
 
             await msg.channel.send(f'Removed `{track_name}`')
         except Exception as e:
