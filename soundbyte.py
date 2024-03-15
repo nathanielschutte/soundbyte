@@ -227,7 +227,7 @@ class Soundbyte(commands.Cog):
             return
 
         # Play the audio file
-        vc.play(discord.FFmpegPCMAudio(executable=self.config.ffmpeg_exe, source=filename))
+        vc.play(discord.FFmpegPCMAudio(source=filename))
 
         # Wait on it...asyncio timeout didnt seem to work
         count_up = 0
