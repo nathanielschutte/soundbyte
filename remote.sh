@@ -5,8 +5,8 @@
 # ====================================
 # Remote config
 REMOTE_USER="deploy-user"
-REMOTE_HOST="monkechat.com"
-REMOTE_MAP="/var/www/code/bots/soundbyte"
+REMOTE_HOST="bot"
+REMOTE_MAP="/var/www/code/bots/soundbyte2"
 LOCAL_MAP="C:/Users/Nate/Documents/projects/repos/soundbyte"
 KEY_LOC="C:/Users/Nate/.ssh/aws-access.pem"
 
