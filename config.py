@@ -71,7 +71,8 @@ class BotConfig(metaclass=Singleton):
 
             # checks ============================
             if not os.path.isfile(self.ffmpeg_exe):
-                raise ConfigLoadError(f'could not locate FFMPEG\'s executable at {self.ffmpeg_exe}')
+                print(f'warn: could not locate FFMPEG\'s executable at {self.ffmpeg_exe}')
+                # raise ConfigLoadError(f'could not locate FFMPEG\'s executable at {self.ffmpeg_exe}')
 
             if not os.path.isdir(resolve_path(self.audio_root, force_exists=False)):
                 os.mkdir(resolve_path(self.audio_root, force_exists=False))

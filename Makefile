@@ -13,6 +13,16 @@ run: build
 		-v $(PWD)/soundbits:/app/soundbits \
 		-v $(PWD)/storage:/app/storage \
 		--name "$(PROJECT_NAME)" \
+		$(PROJECT_NAME):latest \
+		python bot.py
+
+run-dev:
+	docker run --rm -it \
+		-v $(LOG_DIR):/var/log/soundbyte \
+		-v $(PWD)/soundbits:/app/soundbits \
+		-v $(PWD)/storage:/app/storage \
+		--name "$(PROJECT_NAME)-dev" \
+		--entrypoint /bin/bash \
 		$(PROJECT_NAME):latest
 
 deploy:
