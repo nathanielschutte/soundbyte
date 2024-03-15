@@ -6,3 +6,4 @@ storage/
 soundbits/server
 .remote
 .deploy
+.venv

@@ -6,6 +6,9 @@ import os, logging, asyncio
 from discord.ext import commands
 from dotenv import load_dotenv
 
+# import discord Intents
+from discord import Intents
+
 from config import BotConfig
 from exceptions import BotLoadError, ConfigLoadError
 from soundbyte import Soundbyte
@@ -19,7 +22,10 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 try:
     config = BotConfig(CONFIG_FILE)
 
-    bot = commands.Bot(command_prefix=config.bot_prefix, help_command=None)
+    intents = Intents.default()
+    intents.message_content = True
+
+    bot = commands.Bot(command_prefix=config.bot_prefix, help_command=None, intents=intents)
     bot.remove_command('help')
 
     logger = logging.getLogger(config.log_name)
@@ -40,9 +46,12 @@ try:
     store.use_collection(COL_GUILD)
     store.use_collection(f'{COL_SOUNDS}-{COL_GLOBAL}')
 
-    bot.add_cog(Soundbyte(bot, config=config, logger=logger, store=store))
+    async def _startup():
+        await bot.add_cog(Soundbyte(bot, config=config, logger=logger, store=store))
+        logger.info('Soundbyte loaded')
+        await bot.start(TOKEN)
 
-    asyncio.get_event_loop().run_until_complete(bot.start(TOKEN))
+    asyncio.get_event_loop().run_until_complete(_startup())
 
 except ConfigLoadError as e:
     print(f'Error: {str(e)}')
