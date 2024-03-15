@@ -5,10 +5,14 @@
 # ====================================
 # Remote config
 REMOTE_USER="deploy-user"
-REMOTE_HOST="monkechat.com"
-REMOTE_MAP="/var/www/code/bots/soundbyte"
-LOCAL_MAP="C:/Users/Nate/Documents/projects/repos/soundbyte"
-KEY_LOC="C:/Users/Nate/.ssh/aws-access.pem"
+REMOTE_HOST="bot"
+REMOTE_MAP="/var/www/code/bots/soundbyte2"
+# LOCAL_MAP="C:/Users/Nate/Documents/projects/repos/soundbyte"
+# KEY_LOC="C:/Users/Nate/.ssh/aws-access.pem"
+
+LOCAL_MAP="$(pwd)"
+KEY_LOC="$HOME/.ssh/aws-access"
+
 
 # Remote entry script
 REMOTE_ENTRY="bot.py"
@@ -48,6 +52,7 @@ done
 
 
 # Check connection
+# echo "ssh -i $KEY_LOC -q $REMOTE_USER@$REMOTE_HOST"
 printf "Connecting to $REMOTE_HOST..."
 connected='false'
 $(ssh -i $KEY_LOC -q $REMOTE_USER@$REMOTE_HOST exit) && connected='true'
